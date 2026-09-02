@@ -28,6 +28,7 @@ export type Experience = {
   tags: string[];
   text?: string;
   traveller: string;
+  evidence?: "date" | "photo" | "date + photo";
 };
 
 export type Place = {

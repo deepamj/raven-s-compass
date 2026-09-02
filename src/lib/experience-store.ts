@@ -32,3 +32,24 @@ export function mostMentioned(list: Experience[]) {
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => b.count - a.count);
 }
+
+
+export function synthesizeExperiences(list: Experience[]) {
+  if (!list.length) return "No experiences have been shared here yet.";
+
+  const ranked = mostMentioned(list);
+  const positive = ranked.find((item) => !["Crowded", "Isolated after dark"].includes(item.tag));
+  const caution = ranked.find((item) => ["Crowded", "Isolated after dark"].includes(item.tag));
+  const recent = [...list].sort((a, b) => b.iso.localeCompare(a.iso))[0];
+
+  if (positive && caution) {
+    return `Recent reports most often mention ${positive.tag.toLowerCase()}, while ${caution.tag.toLowerCase()} is the main caution to keep in mind. The latest report was ${recent.date.replace(", 2026", "")}.`;
+  }
+  if (positive) {
+    return `Recent reports most often mention ${positive.tag.toLowerCase()}. The latest report was ${recent.date.replace(", 2026", "")}.`;
+  }
+  if (caution) {
+    return `Recent reports mainly flag ${caution.tag.toLowerCase()}. The latest report was ${recent.date.replace(", 2026", "")}.`;
+  }
+  return `There are ${list.length} recent first-hand reports here. The latest was ${recent.date.replace(", 2026", "")}.`;
+}

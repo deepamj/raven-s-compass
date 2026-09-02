@@ -61,6 +61,7 @@ function ContributePage() {
         tags,
         ...(note.trim() ? { text: note.trim() } : {}),
         traveller: "Solo traveller",
+        evidence: photo ? "date + photo" : "date",
       });
     }
     setSubmitted({ placeId: matched?.id ?? null, name: placeName.trim() });
@@ -74,9 +75,26 @@ function ContributePage() {
           <p className="rule-label">Experience recorded</p>
           <h1 className="font-display mt-4 text-5xl leading-tight">Thank you.</h1>
           <p className="mt-5 text-[0.95rem] leading-relaxed text-muted-foreground">
-            Your experience of <span className="text-foreground">{submitted.name}</span> is now part
-            of what the next woman sees — with the date you travelled, so she knows how recent it is.
+            Your experience of <span className="text-foreground">{submitted.name}</span> has been
+            recorded with the date you travelled, so the next woman can judge its recency.
           </p>
+          <div className="mt-8 border-y border-border py-5">
+            <p className="rule-label">Contribution trust signals</p>
+            <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <p className="text-foreground">First-hand report</p>
+                <p className="mt-1 text-xs text-muted-foreground">Travel date supplied by traveller</p>
+              </div>
+              <div>
+                <p className="text-foreground">{photo ? "Photo attached" : "No photo attached"}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Optional supporting evidence</p>
+              </div>
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+              Raven does not label a report “verified” just because it was submitted. Future review can
+              combine date and photo evidence, duplicate detection, and community flagging.
+            </p>
+          </div>
           <ul className="mt-8 space-y-3 border-y border-border py-6">
             {tags.map((t) => (
               <li key={t}>
@@ -120,6 +138,14 @@ function ContributePage() {
 
         <form onSubmit={handleSubmit} className="mt-12 grid gap-14 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="space-y-10">
+            <div className="border-l-2 border-primary pl-4">
+              <p className="rule-label">Keep reports trustworthy</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Share when you were there. A photo is optional. Raven surfaces recent reports first and
+                keeps the evidence attached to each contribution.
+              </p>
+            </div>
+
             <div>
               <label htmlFor="place" className="rule-label block">
                 Where did you go?
