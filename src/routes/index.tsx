@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { RavenFlock } from "@/components/raven/RavenFlock";
 import { RavenMark } from "@/components/raven/RavenMark";
@@ -24,30 +25,37 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
+  const [birdAction, setBirdAction] = useState<"explore" | "contribute" | "click" | null>(null);
+
   return (
     <main className="relative min-h-screen overflow-hidden">
-      <RavenFlock />
+      <RavenFlock action={birdAction} />
 
-      <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-5 py-8 sm:px-10">
+      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-between px-6 py-12 sm:px-12">
+        {/* Header */}
         <div className="flex items-center gap-3">
           <RavenMark className="h-4 w-9 text-foreground" />
           <span className="rule-label">Know before you go</span>
         </div>
 
-        <div className="grid flex-1 items-center gap-14 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20">
-          <div className="max-w-xl">
-            <h1 className="font-display text-6xl leading-[0.95] sm:text-7xl">Raven</h1>
-            <p className="mt-6 max-w-md text-lg leading-relaxed text-muted-foreground">
+        {/* Center Canvas */}
+        <div className="my-16 flex flex-col gap-12 lg:my-24 lg:grid lg:grid-cols-12 lg:items-start lg:gap-8">
+          
+          {/* Big Title & Intro */}
+          <div className="lg:col-span-7">
+            <h1 className="font-display text-7xl leading-[0.9] tracking-tight sm:text-8xl lg:text-[11rem]">
+              Raven
+            </h1>
+            <p className="mt-8 max-w-md text-xl leading-relaxed text-muted-foreground sm:text-2xl">
               Travel advice from women who've already been there.
             </p>
-            <p className="mt-8 max-w-md border-l border-border pl-5 text-[0.95rem] leading-relaxed text-muted-foreground">
-              Not ratings. Not scores. Just what women experienced at the places and stops along a
-              route — and how recently they were there.
-            </p>
-
+            
             <div className="mt-12 flex flex-col gap-3 sm:flex-row">
               <Link
                 to="/journey"
+                onMouseEnter={() => setBirdAction("explore")}
+                onMouseLeave={() => setBirdAction(null)}
+                onClick={() => setBirdAction("click")}
                 className="border border-border-strong bg-primary px-6 py-3.5 text-center text-sm tracking-wide text-primary-foreground transition-colors hover:opacity-90"
               >
                 Explore / Plan a trip
@@ -55,6 +63,9 @@ function Home() {
               <Link
                 to="/contribute"
                 search={{}}
+                onMouseEnter={() => setBirdAction("contribute")}
+                onMouseLeave={() => setBirdAction(null)}
+                onClick={() => setBirdAction("click")}
                 className="border border-border-strong px-6 py-3.5 text-center text-sm tracking-wide text-foreground transition-colors hover:bg-accent"
               >
                 Contribute an experience
@@ -62,16 +73,22 @@ function Home() {
             </div>
           </div>
 
-          <div className="lg:pl-8">
+          {/* Editorial Image & Secondary Text */}
+          <div className="flex flex-col gap-12 lg:col-span-4 lg:col-start-9 lg:-mt-4 lg:pt-8">
+            <p className="border-l border-border pl-5 text-[0.95rem] leading-relaxed text-muted-foreground">
+              Not ratings. Not scores. Just what women experienced at the places and stops along a
+              route — and how recently they were there.
+            </p>
+
             <figure className="relative">
               <img
                 src={journey.hero}
                 alt="Mist over the tea hills on the road into Munnar, Kerala"
                 width={1600}
                 height={1008}
-                className="aspect-4/5 w-full rounded-sm border border-border object-cover shadow-quiet"
+                className="aspect-[3/4] w-48 rounded-sm border border-border object-cover shadow-quiet sm:w-56 opacity-90 grayscale transition-all duration-700 hover:grayscale-0 hover:opacity-100"
               />
-              <figcaption className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+              <figcaption className="mt-4 max-w-[14rem] text-[0.85rem] leading-relaxed text-muted-foreground">
                 <span className="text-foreground">Kochi → Munnar.</span> {seedExperiences.length}{" "}
                 recent experiences from {journey.stops.length} stops along the route.
               </figcaption>
@@ -79,6 +96,7 @@ function Home() {
           </div>
         </div>
 
+        {/* Footer */}
         <footer className="hairline flex flex-wrap items-baseline justify-between gap-4 py-6">
           <p className="text-sm text-muted-foreground">
             {seedExperiences.length} experiences shared this month · Kerala
@@ -89,3 +107,4 @@ function Home() {
     </main>
   );
 }
+
