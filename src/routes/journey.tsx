@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/raven/SiteHeader";
-import { JourneyMap } from "@/components/raven/JourneyMap";
-import { journey, placeById, statFor } from "@/lib/raven-data";
-import { useExperiences } from "@/lib/experience-store";
+import { LeafletJourneyMap } from "@/components/raven/LeafletJourneyMap";
+import { journey, placeById } from "@/lib/raven-data";
+import { useExperiences, getStopStats, getSessionIds, getJourneySummary } from "@/lib/experience-store";
 
 export const Route = createFileRoute("/journey")({
   head: () => ({
@@ -106,9 +106,8 @@ function JourneyPage() {
 
 function JourneyContent() {
   const all = useExperiences();
-  const localCount = (placeId: string) =>
-    all.filter((e) => e.placeId === placeId && e.id.startsWith("local-")).length;
-  const added = all.filter((e) => e.id.startsWith("local-")).length;
+  const sessionIds = getSessionIds();
+  const summary = getJourneySummary(all);
 
   return (
     <>
@@ -118,27 +117,28 @@ function JourneyContent() {
             Kochi <span className="text-muted-foreground">→</span> Munnar
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            {journey.distance} · {journey.typical} · 4 stops with recent reports
+          {journey.distance} · {journey.typical} · {summary.stops} stops with recent reports
           </p>
         </div>
         <dl className="grid grid-cols-3 gap-6 text-sm sm:gap-10">
           <div>
             <dt className="rule-label">Stops</dt>
-            <dd className="font-display mt-1 text-3xl">{journey.summary.stops}</dd>
+            <dd className="font-display mt-1 text-3xl">{summary.stops}</dd>
           </div>
           <div>
             <dt className="rule-label">Experiences</dt>
-            <dd className="font-display mt-1 text-3xl">{journey.summary.experiences + added}</dd>
+            <dd className="font-display mt-1 text-3xl">{summary.experiences}</dd>
           </div>
           <div>
             <dt className="rule-label">Caution notes</dt>
-            <dd className="font-display mt-1 text-3xl text-caution">{journey.summary.cautions}</dd>
+            <dd className="font-display mt-1 text-3xl text-caution">{summary.cautions}</dd>
           </div>
         </dl>
       </div>
 
       <section className="mt-10">
-        <JourneyMap />
+        {/* LeafletJourneyMap replaces the SVG JourneyMap — JourneyMap.tsx is kept but unused */}
+        <LeafletJourneyMap />
       </section>
 
       <section className="mt-16 grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
@@ -168,7 +168,7 @@ function JourneyContent() {
           <ul className="mt-4 divide-y divide-border border-y border-border">
             {journey.stops.map((s) => {
               const place = placeById(s.placeId)!;
-              const stat = statFor(s.placeId);
+              const stat = getStopStats(s.placeId, all, sessionIds);
               return (
                 <li key={s.placeId}>
                   <Link
@@ -187,8 +187,7 @@ function JourneyContent() {
                     <div className="min-w-0">
                       <p className="truncate text-base text-foreground">{place.name}</p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {stat.count + localCount(s.placeId)} recent experiences · last reported{" "}
-                        {localCount(s.placeId) > 0 ? "just now" : stat.lastReported}
+                        {stat.count} recent experiences · last reported {stat.lastReported}
                       </p>
                     </div>
                     <span className="shrink-0 text-sm text-muted-foreground">{s.note}</span>

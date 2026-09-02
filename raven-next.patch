@@ -1,0 +1,394 @@
+diff -ruN /tmp/raven-orig/src/components/raven/JourneyMap.tsx /tmp/raven/src/components/raven/JourneyMap.tsx
+--- /tmp/raven-orig/src/components/raven/JourneyMap.tsx	2026-09-02 06:02:06.000000000 +0000
++++ /tmp/raven/src/components/raven/JourneyMap.tsx	2026-09-02 07:35:46.132601182 +0000
+@@ -1,74 +1,111 @@
+ import { Link } from "@tanstack/react-router";
+-import { journey, statFor } from "@/lib/raven-data";
++import { useState } from "react";
++import { journey, placeById, statFor } from "@/lib/raven-data";
++import { useExperiences } from "@/lib/experience-store";
+ 
+ const coords: Record<string, { x: number; y: number }> = {
+-  "kochi-boat-jetty": { x: 8, y: 74 },
+-  "aluva-railway-station": { x: 34, y: 56 },
+-  "vagamon-meadows": { x: 62, y: 66 },
+-  "munnar-bus-stand": { x: 90, y: 30 },
++  "kochi-boat-jetty": { x: 8, y: 34 },
++  "aluva-railway-station": { x: 34, y: 25.8 },
++  "vagamon-meadows": { x: 62, y: 30.4 },
++  "munnar-bus-stand": { x: 90, y: 13.8 },
+ };
+ 
+-/**
+- * Stylised route map used as the visual anchor of the journey screen:
+- * contour lines plus a route path with clickable stop nodes.
+- */
+ export function JourneyMap() {
++  const [selected, setSelected] = useState(journey.stops[0].placeId);
++  const experiences = useExperiences();
++  const selectedStop = journey.stops.find((s) => s.placeId === selected) ?? journey.stops[0];
++  const selectedPlace = placeById(selectedStop.placeId)!;
++  const selectedStat = statFor(selectedStop.placeId);
++  const selectedLocalCount = experiences.filter(
++    (e) => e.placeId === selectedStop.placeId && e.id.startsWith("local-"),
++  ).length;
++
+   return (
+-    <div className="relative overflow-hidden rounded-sm border border-border bg-surface shadow-quiet">
+-      <svg
+-        viewBox="0 0 100 46"
+-        preserveAspectRatio="none"
+-        className="h-64 w-full sm:h-80"
+-        aria-hidden
+-      >
+-        <g stroke="var(--color-border)" strokeWidth="0.18" fill="none">
+-          {[...Array(9)].map((_, i) => (
+-            <path
+-              key={i}
+-              d={`M-5 ${8 + i * 4.6} C 20 ${2 + i * 4.4}, 46 ${18 + i * 4.2}, 72 ${6 + i * 4.6} S 96 ${
+-                14 + i * 4.3
+-              }, 105 ${9 + i * 4.5}`}
+-            />
+-          ))}
+-        </g>
+-        <g stroke="var(--color-border)" strokeWidth="0.14" fill="none" opacity="0.7">
+-          <path d="M18 46 C 22 34, 14 24, 24 12" />
+-          <path d="M52 46 C 56 32, 48 22, 58 8" />
+-          <path d="M80 46 C 84 34, 76 22, 86 10" />
+-        </g>
+-        <path
+-          d="M8 34 C 20 26, 26 27, 34 25.8 S 54 32, 62 30.4 S 80 16, 90 13.8"
+-          stroke="var(--color-primary)"
+-          strokeWidth="0.5"
+-          fill="none"
+-          strokeLinecap="round"
+-        />
+-      </svg>
++    <div className="overflow-hidden rounded-sm border border-border bg-surface shadow-quiet">
++      <div className="relative">
++        <svg
++          viewBox="0 0 100 46"
++          preserveAspectRatio="none"
++          className="h-64 w-full sm:h-80"
++          aria-label="Kochi to Munnar route with four reported stops"
++          role="img"
++        >
++          <g stroke="var(--color-border)" strokeWidth="0.18" fill="none">
++            {[...Array(9)].map((_, i) => (
++              <path
++                key={i}
++                d={`M-5 ${8 + i * 4.6} C 20 ${2 + i * 4.4}, 46 ${18 + i * 4.2}, 72 ${6 + i * 4.6} S 96 ${14 + i * 4.3}, 105 ${9 + i * 4.5}`}
++              />
++            ))}
++          </g>
++          <g stroke="var(--color-border)" strokeWidth="0.14" fill="none" opacity="0.7">
++            <path d="M18 46 C 22 34, 14 24, 24 12" />
++            <path d="M52 46 C 56 32, 48 22, 58 8" />
++            <path d="M80 46 C 84 34, 76 22, 86 10" />
++          </g>
++          <path
++            d="M8 34 C 20 26, 26 27, 34 25.8 S 54 32, 62 30.4 S 80 16, 90 13.8"
++            stroke="var(--color-primary)"
++            strokeWidth="0.7"
++            fill="none"
++            strokeLinecap="round"
++          />
++        </svg>
+ 
+-      <div className="absolute inset-0">
+-        {journey.stops.map((s) => {
+-          const point = coords[s.placeId] ?? { x: 50, y: 50 };
+-          const stat = statFor(s.placeId);
+-          return (
+-            <Link
+-              key={s.placeId}
+-              to="/place/$placeId"
+-              params={{ placeId: s.placeId }}
+-              className="group absolute -translate-x-1/2 -translate-y-1/2"
+-              style={{ left: `${point.x}%`, top: `${point.y}%` }}
+-            >
+-              <span className="mx-auto block h-2.5 w-2.5 rounded-full border border-foreground bg-background transition-colors group-hover:bg-primary" />
+-              <span className="pointer-events-none absolute left-1/2 top-5 w-36 -translate-x-1/2 text-center">
+-                <span className="font-display block text-lg leading-tight text-foreground">
+-                  {s.label}
+-                </span>
+-                <span className="mt-0.5 block text-[0.7rem] leading-tight text-muted-foreground">
+-                  {stat.count} experiences · {stat.lastReported}
++        <div className="absolute inset-0">
++          {journey.stops.map((stop, index) => {
++            const point = coords[stop.placeId];
++            const stat = statFor(stop.placeId);
++            const localCount = experiences.filter((e) => e.placeId === stop.placeId && e.id.startsWith("local-")).length;
++            const active = selected === stop.placeId;
++            return (
++              <button
++                key={stop.placeId}
++                type="button"
++                onClick={() => setSelected(stop.placeId)}
++                aria-pressed={active}
++                className="group absolute -translate-x-1/2 -translate-y-1/2 text-center"
++                style={{ left: `${point.x}%`, top: `${(point.y / 46) * 100}%` }}
++              >
++                <span
++                  className={`mx-auto block rounded-full border transition-all ${
++                    active
++                      ? "h-4 w-4 border-foreground bg-primary ring-4 ring-primary/20"
++                      : "h-3 w-3 border-foreground bg-background group-hover:bg-primary"
++                  }`}
++                />
++                <span className="pointer-events-none absolute left-1/2 top-5 w-32 -translate-x-1/2 sm:w-36">
++                  <span className="font-display block text-base leading-tight text-foreground sm:text-lg">
++                    {stop.label}
++                  </span>
++                  <span className="mt-0.5 block text-[0.65rem] leading-tight text-muted-foreground sm:text-[0.7rem]">
++                    {index + 1} · {stat.count + localCount} reports
++                  </span>
+                 </span>
+-              </span>
+-            </Link>
+-          );
+-        })}
++              </button>
++            );
++          })}
++        </div>
++      </div>
++
++      <div className="grid gap-5 border-t border-border px-5 py-5 sm:grid-cols-[1fr_auto] sm:items-center sm:px-7">
++        <div>
++          <p className="rule-label">Selected stop</p>
++          <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
++            <h3 className="font-display text-2xl">{selectedPlace.name}</h3>
++            <span className="text-sm text-muted-foreground">{selectedPlace.kind}</span>
++          </div>
++          <p className="mt-1 text-sm text-muted-foreground">
++            {selectedStat.count + selectedLocalCount} recent experiences · last reported {selectedLocalCount > 0 ? "just now" : selectedStat.lastReported}
++          </p>
++        </div>
++        <Link
++          to="/place/$placeId"
++          params={{ placeId: selectedPlace.id }}
++          className="inline-flex w-fit border border-border-strong px-4 py-2.5 text-sm transition-colors hover:bg-accent"
++        >
++          Read experiences
++        </Link>
+       </div>
+     </div>
+   );
+diff -ruN /tmp/raven-orig/src/lib/experience-store.ts /tmp/raven/src/lib/experience-store.ts
+--- /tmp/raven-orig/src/lib/experience-store.ts	2026-09-02 06:02:06.000000000 +0000
++++ /tmp/raven/src/lib/experience-store.ts	2026-09-02 07:35:26.530136913 +0000
+@@ -32,3 +32,24 @@
+     .map(([tag, count]) => ({ tag, count }))
+     .sort((a, b) => b.count - a.count);
+ }
++
++
++export function synthesizeExperiences(list: Experience[]) {
++  if (!list.length) return "No experiences have been shared here yet.";
++
++  const ranked = mostMentioned(list);
++  const positive = ranked.find((item) => !["Crowded", "Isolated after dark"].includes(item.tag));
++  const caution = ranked.find((item) => ["Crowded", "Isolated after dark"].includes(item.tag));
++  const recent = [...list].sort((a, b) => b.iso.localeCompare(a.iso))[0];
++
++  if (positive && caution) {
++    return `Recent reports most often mention ${positive.tag.toLowerCase()}, while ${caution.tag.toLowerCase()} is the main caution to keep in mind. The latest report was ${recent.date.replace(", 2026", "")}.`;
++  }
++  if (positive) {
++    return `Recent reports most often mention ${positive.tag.toLowerCase()}. The latest report was ${recent.date.replace(", 2026", "")}.`;
++  }
++  if (caution) {
++    return `Recent reports mainly flag ${caution.tag.toLowerCase()}. The latest report was ${recent.date.replace(", 2026", "")}.`;
++  }
++  return `There are ${list.length} recent first-hand reports here. The latest was ${recent.date.replace(", 2026", "")}.`;
++}
+diff -ruN /tmp/raven-orig/src/lib/raven-data.ts /tmp/raven/src/lib/raven-data.ts
+--- /tmp/raven-orig/src/lib/raven-data.ts	2026-09-02 06:02:06.000000000 +0000
++++ /tmp/raven/src/lib/raven-data.ts	2026-09-02 07:35:06.958118418 +0000
+@@ -28,6 +28,7 @@
+   tags: string[];
+   text?: string;
+   traveller: string;
++  evidence?: "date" | "photo" | "date + photo";
+ };
+ 
+ export type Place = {
+diff -ruN /tmp/raven-orig/src/routes/contribute.tsx /tmp/raven/src/routes/contribute.tsx
+--- /tmp/raven-orig/src/routes/contribute.tsx	2026-09-02 06:02:06.000000000 +0000
++++ /tmp/raven/src/routes/contribute.tsx	2026-09-02 07:35:35.258727058 +0000
+@@ -61,6 +61,7 @@
+         tags,
+         ...(note.trim() ? { text: note.trim() } : {}),
+         traveller: "Solo traveller",
++        evidence: photo ? "date + photo" : "date",
+       });
+     }
+     setSubmitted({ placeId: matched?.id ?? null, name: placeName.trim() });
+@@ -74,9 +75,26 @@
+           <p className="rule-label">Experience recorded</p>
+           <h1 className="font-display mt-4 text-5xl leading-tight">Thank you.</h1>
+           <p className="mt-5 text-[0.95rem] leading-relaxed text-muted-foreground">
+-            Your experience of <span className="text-foreground">{submitted.name}</span> is now part
+-            of what the next woman sees — with the date you travelled, so she knows how recent it is.
++            Your experience of <span className="text-foreground">{submitted.name}</span> has been
++            recorded with the date you travelled, so the next woman can judge its recency.
+           </p>
++          <div className="mt-8 border-y border-border py-5">
++            <p className="rule-label">Contribution trust signals</p>
++            <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
++              <div>
++                <p className="text-foreground">First-hand report</p>
++                <p className="mt-1 text-xs text-muted-foreground">Travel date supplied by traveller</p>
++              </div>
++              <div>
++                <p className="text-foreground">{photo ? "Photo attached" : "No photo attached"}</p>
++                <p className="mt-1 text-xs text-muted-foreground">Optional supporting evidence</p>
++              </div>
++            </div>
++            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
++              Raven does not label a report “verified” just because it was submitted. Future review can
++              combine date and photo evidence, duplicate detection, and community flagging.
++            </p>
++          </div>
+           <ul className="mt-8 space-y-3 border-y border-border py-6">
+             {tags.map((t) => (
+               <li key={t}>
+@@ -120,6 +138,14 @@
+ 
+         <form onSubmit={handleSubmit} className="mt-12 grid gap-14 lg:grid-cols-[0.95fr_1.05fr]">
+           <div className="space-y-10">
++            <div className="border-l-2 border-primary pl-4">
++              <p className="rule-label">Keep reports trustworthy</p>
++              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
++                Share when you were there. A photo is optional. Raven surfaces recent reports first and
++                keeps the evidence attached to each contribution.
++              </p>
++            </div>
++
+             <div>
+               <label htmlFor="place" className="rule-label block">
+                 Where did you go?
+diff -ruN /tmp/raven-orig/src/routes/place.$placeId.tsx /tmp/raven/src/routes/place.$placeId.tsx
+--- /tmp/raven-orig/src/routes/place.$placeId.tsx	2026-09-02 07:02:08.000000000 +0000
++++ /tmp/raven/src/routes/place.$placeId.tsx	2026-09-02 07:35:26.530591634 +0000
+@@ -1,8 +1,9 @@
+ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
++import { useState } from "react";
+ import { SiteHeader } from "@/components/raven/SiteHeader";
+ import { TagMark } from "@/components/raven/TagMark";
+ import { baseMentions, journey, placeById, statFor } from "@/lib/raven-data";
+-import { mostMentioned, useExperiences } from "@/lib/experience-store";
++import { mostMentioned, synthesizeExperiences, useExperiences } from "@/lib/experience-store";
+ 
+ export const Route = createFileRoute("/place/$placeId")({
+   loader: ({ params }) => {
+@@ -32,6 +33,8 @@
+ function PlacePage() {
+   const { place } = Route.useLoaderData();
+   const experiences = useExperiences(place.id);
++  const [activeTag, setActiveTag] = useState<string | null>(null);
++  const filteredExperiences = activeTag ? experiences.filter((e) => e.tags.includes(activeTag)) : experiences;
+   const base = baseMentions[place.id] ?? {};
+   const added = mostMentioned(experiences.filter((e) => e.id.startsWith("local-")));
+   const ranked = Object.entries(base)
+@@ -75,26 +78,63 @@
+ 
+         <section className="mt-16 grid gap-14 lg:grid-cols-[0.85fr_1.15fr]">
+           <div>
+-            <h2 className="font-display text-3xl">What we experienced</h2>
+-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
+-              Most mentioned by women who reported from here. Counts, not scores.
++            <p className="rule-label">Raven synthesis</p>
++            <h2 className="font-display mt-2 text-3xl leading-snug">What women are saying lately</h2>
++            <p className="mt-4 max-w-md text-[0.95rem] leading-relaxed text-muted-foreground">
++              {synthesizeExperiences(experiences)}
+             </p>
+-            <ul className="mt-8 space-y-4 border-t border-border pt-6">
+-              {ranked.map(({ tag, count }) => (
+-                <li key={tag}>
+-                  <TagMark tag={tag} count={count} strong />
+-                </li>
+-              ))}
+-            </ul>
++
++            <div className="mt-8 border-y border-border py-5">
++              <p className="rule-label">Filter reports</p>
++              <div className="mt-3 flex flex-wrap gap-2">
++                <button
++                  type="button"
++                  onClick={() => setActiveTag(null)}
++                  className={`border px-3 py-1.5 text-xs transition-colors ${
++                    activeTag === null ? "border-foreground bg-foreground text-background" : "border-border-strong hover:bg-accent"
++                  }`}
++                >
++                  All · {experiences.length}
++                </button>
++                {ranked.map(({ tag, count }) => (
++                  <button
++                    key={tag}
++                    type="button"
++                    onClick={() => setActiveTag(activeTag === tag ? null : tag)}
++                    className={`border px-3 py-1.5 text-xs transition-colors ${
++                      activeTag === tag ? "border-foreground bg-foreground text-background" : "border-border-strong hover:bg-accent"
++                    }`}
++                  >
++                    {tag} · {count}
++                  </button>
++                ))}
++              </div>
++            </div>
++
++            <div className="mt-8">
++              <h3 className="font-display text-2xl">Most mentioned</h3>
++              <ul className="mt-5 space-y-4">
++                {ranked.slice(0, 5).map(({ tag, count }) => (
++                  <li key={tag}>
++                    <TagMark tag={tag} count={count} strong />
++                  </li>
++                ))}
++              </ul>
++            </div>
+           </div>
+ 
+           <div>
+             <div className="flex flex-wrap items-baseline justify-between gap-3">
+-              <h2 className="font-display text-3xl">Recent voices</h2>
+-              <p className="text-xs text-muted-foreground">Newest first</p>
++              <div>
++                <h2 className="font-display text-3xl">Recent voices</h2>
++                <p className="mt-1 text-xs text-muted-foreground">
++                  {activeTag ? `Showing reports tagged “${activeTag}”` : "Newest first"}
++                </p>
++              </div>
++              <p className="text-xs text-muted-foreground">{filteredExperiences.length} shown</p>
+             </div>
+             <ul className="mt-6 divide-y divide-border border-y border-border">
+-              {experiences.map((e) => (
++              {filteredExperiences.map((e) => (
+                 <li key={e.id} className="py-6">
+                   {e.text && (
+                     <p className="font-display text-xl leading-snug text-foreground">“{e.text}”</p>
+@@ -102,6 +142,9 @@
+                   <p className="mt-2 text-sm text-muted-foreground">
+                     {e.date.replace(", 2026", "")} · {e.traveller}
+                   </p>
++                  <p className="mt-2 text-[0.7rem] uppercase tracking-[0.12em] text-muted-foreground">
++                    First-hand report · {e.evidence === "date + photo" ? "travel date + photo" : e.evidence === "photo" ? "photo shared" : "travel date shared"}
++                  </p>
+                   <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+                     {e.tags.map((t) => (
+                       <li key={t}>
+@@ -113,6 +156,12 @@
+               ))}
+             </ul>
+ 
++            {filteredExperiences.length === 0 && (
++              <p className="mt-6 border-y border-border py-6 text-sm text-muted-foreground">
++                No reports match this filter yet.
++              </p>
++            )}
++
+             <div className="mt-8 flex flex-wrap items-center gap-4">
+               <Link
+                 to="/contribute"

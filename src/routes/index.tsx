@@ -72,8 +72,8 @@ function Home() {
                 className="aspect-4/5 w-full rounded-sm border border-border object-cover shadow-quiet"
               />
               <figcaption className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-                <span className="text-foreground">Kochi → Munnar.</span> {journey.summary.experiences}{" "}
-                recent experiences from {journey.summary.stops} stops along the route.
+                <span className="text-foreground">Kochi → Munnar.</span> {seedExperiences.length}{" "}
+                recent experiences from {journey.stops.length} stops along the route.
               </figcaption>
             </figure>
           </div>

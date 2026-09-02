@@ -76,17 +76,19 @@ export const places: Place[] = [
   },
 ];
 
+export const placeCoords: Record<string, { lat: number; lng: number }> = {
+  "kochi-boat-jetty": { lat: 9.9312, lng: 76.2673 },
+  "aluva-railway-station": { lat: 10.1065, lng: 76.3521 },
+  "vagamon-meadows": { lat: 9.6854, lng: 76.9059 },
+  "munnar-bus-stand": { lat: 10.0889, lng: 77.0595 },
+};
+
 export const journey = {
   from: "Kochi",
   to: "Munnar",
   distance: "128 km",
   typical: "4 h 20 m by road",
   hero: munnarHills,
-  summary: {
-    stops: 8,
-    experiences: 15,
-    cautions: 2,
-  },
   stops: [
     { placeId: "kochi-boat-jetty", label: "Kochi", note: "Start" },
     { placeId: "aluva-railway-station", label: "Aluva", note: "Rail transfer" },
@@ -191,45 +193,6 @@ export const seedExperiences: Experience[] = [
   },
 ];
 
-export const stopStats: Record<string, { count: number; lastReported: string }> = {
-  "munnar-bus-stand": { count: 21, lastReported: "2 days ago" },
-  "aluva-railway-station": { count: 19, lastReported: "5 days ago" },
-  "vagamon-meadows": { count: 11, lastReported: "9 days ago" },
-  "kochi-boat-jetty": { count: 14, lastReported: "3 days ago" },
-};
-
 export function placeById(id: string) {
   return places.find((p) => p.id === id);
-}
-
-export const baseMentions: Record<string, Record<string, number>> = {
-  "munnar-bus-stand": {
-    "Easy transport": 12,
-    "Friendly staff": 10,
-    Crowded: 7,
-    "Isolated after dark": 4,
-    "Clean restroom": 5,
-    "Solo-friendly": 6,
-  },
-  "aluva-railway-station": {
-    "Easy transport": 11,
-    "Felt safe": 8,
-    Crowded: 9,
-    "Clean restroom": 4,
-  },
-  "vagamon-meadows": {
-    "Solo-friendly": 7,
-    "Isolated after dark": 5,
-    "Felt safe": 3,
-  },
-  "kochi-boat-jetty": {
-    "Friendly staff": 9,
-    "Easy transport": 8,
-    "Felt safe": 7,
-    Crowded: 3,
-  },
-};
-
-export function statFor(id: string) {
-  return stopStats[id] ?? { count: 0, lastReported: "not reported yet" };
 }

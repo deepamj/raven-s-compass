@@ -2,8 +2,8 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { SiteHeader } from "@/components/raven/SiteHeader";
 import { TagMark } from "@/components/raven/TagMark";
-import { baseMentions, journey, placeById, statFor } from "@/lib/raven-data";
-import { mostMentioned, synthesizeExperiences, useExperiences } from "@/lib/experience-store";
+import { journey, placeById } from "@/lib/raven-data";
+import { synthesizeExperiences, useExperiences, getTagCounts, getStopStats, getSessionIds } from "@/lib/experience-store";
 
 export const Route = createFileRoute("/place/$placeId")({
   loader: ({ params }) => {
@@ -32,20 +32,13 @@ export const Route = createFileRoute("/place/$placeId")({
 
 function PlacePage() {
   const { place } = Route.useLoaderData();
-  const experiences = useExperiences(place.id);
+  const all = useExperiences();
+  const sessionIds = getSessionIds();
+  const experiences = all.filter((e) => e.placeId === place.id);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const filteredExperiences = activeTag ? experiences.filter((e) => e.tags.includes(activeTag)) : experiences;
-  const base = baseMentions[place.id] ?? {};
-  const added = mostMentioned(experiences.filter((e) => e.id.startsWith("local-")));
-  const ranked = Object.entries(base)
-    .map(([tag, count]) => ({
-      tag,
-      count: count + (added.find((a) => a.tag === tag)?.count ?? 0),
-    }))
-    .concat(added.filter((a) => !(a.tag in base)))
-    .sort((a, b) => b.count - a.count);
-  const stat = statFor(place.id);
-  const localCount = experiences.filter((e) => e.id.startsWith("local-")).length;
+  const ranked = getTagCounts(place.id, all);
+  const stat = getStopStats(place.id, all, sessionIds);
 
   return (
     <>
@@ -62,8 +55,8 @@ function PlacePage() {
             </p>
             <h1 className="font-display mt-3 text-5xl leading-tight sm:text-6xl">{place.name}</h1>
             <p className="mt-5 text-[0.95rem] text-muted-foreground">
-              <span className="text-foreground">{stat.count + localCount} recent experiences</span> ·
-              last reported {localCount > 0 ? "just now" : stat.lastReported}
+              <span className="text-foreground">{stat.count} recent experiences</span> ·
+              last reported {stat.lastReported}
             </p>
           </div>
           <img

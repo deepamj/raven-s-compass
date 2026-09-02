@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { journey, placeById, statFor } from "@/lib/raven-data";
-import { useExperiences } from "@/lib/experience-store";
+import { journey, placeById } from "@/lib/raven-data";
+import { useExperiences, getStopStats, getSessionIds } from "@/lib/experience-store";
 
 const coords: Record<string, { x: number; y: number }> = {
   "kochi-boat-jetty": { x: 8, y: 34 },
@@ -13,12 +13,10 @@ const coords: Record<string, { x: number; y: number }> = {
 export function JourneyMap() {
   const [selected, setSelected] = useState(journey.stops[0].placeId);
   const experiences = useExperiences();
+  const sessionIds = getSessionIds();
   const selectedStop = journey.stops.find((s) => s.placeId === selected) ?? journey.stops[0];
   const selectedPlace = placeById(selectedStop.placeId)!;
-  const selectedStat = statFor(selectedStop.placeId);
-  const selectedLocalCount = experiences.filter(
-    (e) => e.placeId === selectedStop.placeId && e.id.startsWith("local-"),
-  ).length;
+  const selectedStat = getStopStats(selectedStop.placeId, experiences, sessionIds);
 
   return (
     <div className="overflow-hidden rounded-sm border border-border bg-surface shadow-quiet">
@@ -55,8 +53,7 @@ export function JourneyMap() {
         <div className="absolute inset-0">
           {journey.stops.map((stop, index) => {
             const point = coords[stop.placeId];
-            const stat = statFor(stop.placeId);
-            const localCount = experiences.filter((e) => e.placeId === stop.placeId && e.id.startsWith("local-")).length;
+            const stat = getStopStats(stop.placeId, experiences, sessionIds);
             const active = selected === stop.placeId;
             return (
               <button
@@ -79,7 +76,7 @@ export function JourneyMap() {
                     {stop.label}
                   </span>
                   <span className="mt-0.5 block text-[0.65rem] leading-tight text-muted-foreground sm:text-[0.7rem]">
-                    {index + 1} · {stat.count + localCount} reports
+                    {index + 1} · {stat.count} reports
                   </span>
                 </span>
               </button>
@@ -96,7 +93,7 @@ export function JourneyMap() {
             <span className="text-sm text-muted-foreground">{selectedPlace.kind}</span>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {selectedStat.count + selectedLocalCount} recent experiences · last reported {selectedLocalCount > 0 ? "just now" : selectedStat.lastReported}
+          {selectedStat.count} recent experiences · last reported {selectedStat.lastReported}
           </p>
         </div>
         <Link
