@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/raven/SiteHeader";
 import { TagMark } from "@/components/raven/TagMark";
-import { journey, placeById, statFor } from "@/lib/raven-data";
+import { baseMentions, journey, placeById, statFor } from "@/lib/raven-data";
 import { mostMentioned, useExperiences } from "@/lib/experience-store";
 
 export const Route = createFileRoute("/place/$placeId")({
@@ -32,7 +32,15 @@ export const Route = createFileRoute("/place/$placeId")({
 function PlacePage() {
   const { place } = Route.useLoaderData();
   const experiences = useExperiences(place.id);
-  const ranked = mostMentioned(experiences);
+  const base = baseMentions[place.id] ?? {};
+  const added = mostMentioned(experiences.filter((e) => e.id.startsWith("local-")));
+  const ranked = Object.entries(base)
+    .map(([tag, count]) => ({
+      tag,
+      count: count + (added.find((a) => a.tag === tag)?.count ?? 0),
+    }))
+    .concat(added.filter((a) => !(a.tag in base)))
+    .sort((a, b) => b.count - a.count);
   const stat = statFor(place.id);
 
   return (

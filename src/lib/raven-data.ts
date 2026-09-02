@@ -201,6 +201,34 @@ export function placeById(id: string) {
   return places.find((p) => p.id === id);
 }
 
+export const baseMentions: Record<string, Record<string, number>> = {
+  "munnar-bus-stand": {
+    "Easy transport": 12,
+    "Friendly staff": 10,
+    Crowded: 7,
+    "Isolated after dark": 4,
+    "Clean restroom": 5,
+    "Solo-friendly": 6,
+  },
+  "aluva-railway-station": {
+    "Easy transport": 11,
+    "Felt safe": 8,
+    Crowded: 9,
+    "Clean restroom": 4,
+  },
+  "vagamon-meadows": {
+    "Solo-friendly": 7,
+    "Isolated after dark": 5,
+    "Felt safe": 3,
+  },
+  "kochi-boat-jetty": {
+    "Friendly staff": 9,
+    "Easy transport": 8,
+    "Felt safe": 7,
+    Crowded: 3,
+  },
+};
+
 export function statFor(id: string) {
   return stopStats[id] ?? { count: 0, lastReported: "not reported yet" };
 }
