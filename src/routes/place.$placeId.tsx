@@ -42,6 +42,7 @@ function PlacePage() {
     .concat(added.filter((a) => !(a.tag in base)))
     .sort((a, b) => b.count - a.count);
   const stat = statFor(place.id);
+  const localCount = experiences.filter((e) => e.id.startsWith("local-")).length;
 
   return (
     <>
@@ -58,8 +59,8 @@ function PlacePage() {
             </p>
             <h1 className="font-display mt-3 text-5xl leading-tight sm:text-6xl">{place.name}</h1>
             <p className="mt-5 text-[0.95rem] text-muted-foreground">
-              <span className="text-foreground">{stat.count} recent experiences</span> · last
-              reported {stat.lastReported}
+              <span className="text-foreground">{stat.count + localCount} recent experiences</span> ·
+              last reported {localCount > 0 ? "just now" : stat.lastReported}
             </p>
           </div>
           <img
