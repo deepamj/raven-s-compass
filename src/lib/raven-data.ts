@@ -200,3 +200,7 @@ export const stopStats: Record<string, { count: number; lastReported: string }> 
 export function placeById(id: string) {
   return places.find((p) => p.id === id);
 }
+
+export function statFor(id: string) {
+  return stopStats[id] ?? { count: 0, lastReported: "not reported yet" };
+}
