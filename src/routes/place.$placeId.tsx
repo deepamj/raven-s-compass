@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/raven/SiteHeader";
 import { TagMark } from "@/components/raven/TagMark";
-import { journey, placeById, stopStats } from "@/lib/raven-data";
+import { journey, placeById, statFor } from "@/lib/raven-data";
 import { mostMentioned, useExperiences } from "@/lib/experience-store";
 
 export const Route = createFileRoute("/place/$placeId")({
@@ -33,7 +33,7 @@ function PlacePage() {
   const { place } = Route.useLoaderData();
   const experiences = useExperiences(place.id);
   const ranked = mostMentioned(experiences);
-  const stat = stopStats[place.id];
+  const stat = statFor(place.id);
 
   return (
     <>

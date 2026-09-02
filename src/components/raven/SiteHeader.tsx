@@ -19,6 +19,7 @@ export function SiteHeader() {
           </Link>
           <Link
             to="/contribute"
+            search={{}}
             className="border border-border-strong px-3.5 py-1.5 text-foreground transition-colors hover:bg-accent"
             activeProps={{ className: "bg-accent" }}
           >

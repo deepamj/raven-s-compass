@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/raven/SiteHeader";
 import { JourneyMap } from "@/components/raven/JourneyMap";
-import { journey, placeById, stopStats } from "@/lib/raven-data";
+import { journey, placeById, statFor } from "@/lib/raven-data";
 
 export const Route = createFileRoute("/journey")({
   head: () => ({
@@ -86,7 +86,7 @@ function JourneyPage() {
             <ul className="mt-4 divide-y divide-border border-y border-border">
               {journey.stops.map((s) => {
                 const place = placeById(s.placeId)!;
-                const stat = stopStats[s.placeId];
+                const stat = statFor(s.placeId);
                 return (
                   <li key={s.placeId}>
                     <Link
@@ -116,7 +116,7 @@ function JourneyPage() {
             </ul>
             <p className="mt-6 text-sm text-muted-foreground">
               Been on this route?{" "}
-              <Link to="/contribute" className="text-foreground underline underline-offset-4">
+              <Link to="/contribute" search={{}} className="text-foreground underline underline-offset-4">
                 Tell other women what you experienced.
               </Link>
             </p>

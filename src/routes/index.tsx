@@ -54,6 +54,7 @@ function Home() {
               </Link>
               <Link
                 to="/contribute"
+                search={{}}
                 className="border border-border-strong px-6 py-3.5 text-center text-sm tracking-wide text-foreground transition-colors hover:bg-accent"
               >
                 Contribute an experience

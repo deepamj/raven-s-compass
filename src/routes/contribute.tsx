@@ -6,9 +6,8 @@ import { EXPERIENCE_TAGS, places } from "@/lib/raven-data";
 import { addExperience } from "@/lib/experience-store";
 
 export const Route = createFileRoute("/contribute")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    place: typeof search.place === "string" ? search.place : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { place?: string } =>
+    typeof search["place"] === "string" ? { place: search["place"] } : {},
   head: () => ({
     meta: [
       { title: "Tell other women what you experienced | Raven" },
@@ -60,7 +59,7 @@ function ContributePage() {
         date: display,
         iso: date,
         tags,
-        text: note.trim() || undefined,
+        ...(note.trim() ? { text: note.trim() } : {}),
         traveller: "Solo traveller",
       });
     }
