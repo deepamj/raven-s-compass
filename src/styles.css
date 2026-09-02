@@ -232,3 +232,8 @@
   box-shadow: var(--shadow-quiet) !important;
 }
 
+/* Dark-mode tile inversion: applied only to the TileLayer container,
+   not to markers or tooltips (which live in sibling Leaflet panes). */
+.raven-tile-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+}

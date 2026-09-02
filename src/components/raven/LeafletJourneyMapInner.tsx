@@ -57,9 +57,9 @@ export default function LeafletJourneyMapInner() {
   // (set in __root.tsx). Read it at render time so the tile URL is correct.
   const isDark = document.documentElement.classList.contains("dark");
 
-  const tileUrl = isDark
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+  // Single OSM tile URL — no API key required.
+  // Dark-mode inversion is applied via a CSS filter on the tile container (see below).
+  const tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
   // Match the app's primary color (aquamarine) for line + marker fill.
   const primaryColor = isDark ? "oklch(0.83 0.105 168)" : "oklch(0.74 0.088 168)";
@@ -84,8 +84,10 @@ export default function LeafletJourneyMapInner() {
 
         <TileLayer
           url={tileUrl}
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
-          detectRetina
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+          // In dark mode, apply a CSS filter to the tile layer container only.
+          // Markers and tooltips live in sibling Leaflet panes and are unaffected.
+          className={isDark ? "raven-tile-dark" : undefined}
         />
 
         {/* Route polyline */}
