@@ -1,16 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import { journey, placeById, stopStats } from "@/lib/raven-data";
+import { journey, statFor } from "@/lib/raven-data";
 
-const nodes = [
-  { x: 8, y: 74 },
-  { x: 34, y: 58 },
-  { x: 62, y: 66 },
-  { x: 90, y: 32 },
-];
+const coords: Record<string, { x: number; y: number }> = {
+  "kochi-boat-jetty": { x: 8, y: 74 },
+  "aluva-railway-station": { x: 34, y: 56 },
+  "vagamon-meadows": { x: 62, y: 66 },
+  "munnar-bus-stand": { x: 90, y: 30 },
+};
 
 /**
- * Stylised route map used as the visual anchor of the journey screen.
- * Contour lines + a route path with clickable stop nodes.
+ * Stylised route map used as the visual anchor of the journey screen:
+ * contour lines plus a route path with clickable stop nodes.
  */
 export function JourneyMap() {
   return (
@@ -37,9 +37,7 @@ export function JourneyMap() {
           <path d="M80 46 C 84 34, 76 22, 86 10" />
         </g>
         <path
-          d={`M${nodes[0].x} ${nodes[0].y * 0.46} C 20 22, 26 30, ${nodes[1].x} ${
-            nodes[1].y * 0.46
-          } S 54 34, ${nodes[2].x} ${nodes[2].y * 0.46} S 80 18, ${nodes[3].x} ${nodes[3].y * 0.46}`}
+          d="M8 34 C 20 26, 26 27, 34 25.8 S 54 32, 62 30.4 S 80 16, 90 13.8"
           stroke="var(--color-primary)"
           strokeWidth="0.5"
           fill="none"
@@ -48,18 +46,18 @@ export function JourneyMap() {
       </svg>
 
       <div className="absolute inset-0">
-        {journey.stops.map((s, i) => {
-          const place = placeById(s.placeId)!;
-          const stat = stopStats[s.placeId];
+        {journey.stops.map((s) => {
+          const point = coords[s.placeId] ?? { x: 50, y: 50 };
+          const stat = statFor(s.placeId);
           return (
             <Link
               key={s.placeId}
               to="/place/$placeId"
               params={{ placeId: s.placeId }}
               className="group absolute -translate-x-1/2 -translate-y-1/2"
-              style={{ left: `${nodes[i].x}%`, top: `${nodes[i].y}%` }}
+              style={{ left: `${point.x}%`, top: `${point.y}%` }}
             >
-              <span className="block h-2.5 w-2.5 rounded-full border border-foreground bg-background transition-colors group-hover:bg-primary" />
+              <span className="mx-auto block h-2.5 w-2.5 rounded-full border border-foreground bg-background transition-colors group-hover:bg-primary" />
               <span className="pointer-events-none absolute left-1/2 top-5 w-36 -translate-x-1/2 text-center">
                 <span className="font-display block text-lg leading-tight text-foreground">
                   {s.label}
@@ -67,7 +65,6 @@ export function JourneyMap() {
                 <span className="mt-0.5 block text-[0.7rem] leading-tight text-muted-foreground">
                   {stat.count} experiences · {stat.lastReported}
                 </span>
-                <span className="sr-only">{place.name}</span>
               </span>
             </Link>
           );
