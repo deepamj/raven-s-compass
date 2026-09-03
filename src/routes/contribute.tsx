@@ -281,6 +281,7 @@ function ContributePage() {
                 id="when"
                 type="date"
                 value={date}
+                max={new Date().toISOString().split("T")[0]}
                 onChange={(e) => setDate(e.target.value)}
                 className="mt-3 w-full border-b border-input bg-transparent py-2.5 text-lg outline-none focus:border-ring"
               />

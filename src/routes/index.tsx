@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import useEmblaCarousel from "embla-carousel-react";
 import { RavenFlock } from "@/components/raven/RavenFlock";
 import { RavenMark } from "@/components/raven/RavenMark";
-import { KERALA_PLACE_IDS } from "@/lib/raven-data";
 import { useExperiences } from "@/lib/experience-store";
 
 export const Route = createFileRoute("/")({
@@ -34,7 +33,6 @@ function Home() {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
   const thisMonthCount = allExperiences.filter((e) => {
-    if (!KERALA_PLACE_IDS.has(e.placeId)) return false;
     const d = new Date(e.iso);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   }).length;
@@ -108,7 +106,7 @@ function Home() {
         {/* Footer */}
         <footer className="hairline flex flex-wrap items-baseline justify-between gap-4 py-6">
           <p className="text-sm text-muted-foreground">
-            {thisMonthCount} experiences shared this month · Kerala
+            {thisMonthCount} experiences shared this month
           </p>
           <p className="rule-label">Raven</p>
         </footer>
