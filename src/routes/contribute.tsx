@@ -2,8 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { SiteHeader } from "@/components/raven/SiteHeader";
 import { TagMark } from "@/components/raven/TagMark";
-import { EXPERIENCE_TAGS, places } from "@/lib/raven-data";
+import { EXPERIENCE_TAGS } from "@/lib/raven-data";
+import { usePlaces, addPlace } from "@/lib/places-store";
 import { addExperience } from "@/lib/experience-store";
+import { PlacePickerMap } from "@/components/raven/PlacePickerMap";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/contribute")({
   validateSearch: (search: Record<string, unknown>): { place?: string } =>
@@ -35,36 +38,90 @@ function ContributePage() {
   const [date, setDate] = useState("2026-08-30");
   const [tags, setTags] = useState<string[]>([]);
   const [note, setNote] = useState("");
-  const [photo, setPhoto] = useState<string | null>(null);
-  const [photoName, setPhotoName] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState<{ placeId: string | null; name: string } | null>(null);
+  const [placeError, setPlaceError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const places = usePlaces();
+
+  const [isAddingPlace, setIsAddingPlace] = useState(false);
+  const [newPlaceArea, setNewPlaceArea] = useState("");
+  const [newPlaceCoord, setNewPlaceCoord] = useState<{lat: number, lng: number} | null>(null);
+  const [newPlaceError, setNewPlaceError] = useState<string | null>(null);
 
   const toggle = (tag: string) =>
     setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
 
   const matched = places.find((p) => p.name.toLowerCase() === placeName.trim().toLowerCase());
   const canSubmit = placeName.trim().length > 1 && tags.length > 0;
+  const isUnmatched = placeName.trim().length >= 2 && !matched;
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSaveNewPlace() {
+    if (!newPlaceArea.trim() || !newPlaceCoord) return;
+    setNewPlaceError(null);
+    try {
+      await addPlace({
+        name: placeName.trim(),
+        area: newPlaceArea.trim(),
+        lat: newPlaceCoord.lat,
+        lng: newPlaceCoord.lng
+      });
+      setIsAddingPlace(false);
+      setNewPlaceArea("");
+      setNewPlaceCoord(null);
+      setPlaceError(null);
+    } catch (err) {
+      setNewPlaceError("Failed to save place.");
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
+    setPlaceError(null);
+    setSubmitError(null);
+
+    if (!matched) {
+      setPlaceError("Please select a place Raven already knows");
+      return;
+    }
+
     const display = new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
     });
-    if (matched) {
-      addExperience({
+    
+    try {
+      // Upload each photo to Supabase Storage and collect public URLs
+      const imageUrls: string[] = [];
+      for (const file of photos) {
+        const ext = file.name.split(".").pop() ?? "jpg";
+        const path = `${crypto.randomUUID()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("experience-photos")
+          .upload(path, file, { upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage
+          .from("experience-photos")
+          .getPublicUrl(path);
+        imageUrls.push(urlData.publicUrl);
+      }
+
+      await addExperience({
         placeId: matched.id,
         date: display,
         iso: date,
         tags,
         ...(note.trim() ? { text: note.trim() } : {}),
         traveller: "Solo traveller",
-        evidence: photo ? "date + photo" : "date",
+        ...(imageUrls.length ? { images: imageUrls } : {}),
       });
+      setSubmitted({ placeId: matched.id, name: placeName.trim() });
+    } catch (err) {
+      setSubmitError("Something went wrong saving your experience — try again");
     }
-    setSubmitted({ placeId: matched?.id ?? null, name: placeName.trim() });
   }
 
   if (submitted) {
@@ -86,7 +143,7 @@ function ContributePage() {
                 <p className="mt-1 text-xs text-muted-foreground">Travel date supplied by traveller</p>
               </div>
               <div>
-                <p className="text-foreground">{photo ? "Photo attached" : "No photo attached"}</p>
+                <p className="text-foreground">{photos.length > 0 ? `${photos.length} photo${photos.length > 1 ? "s" : ""} attached` : "No photo attached"}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Optional supporting evidence</p>
               </div>
             </div>
@@ -164,10 +221,56 @@ function ContributePage() {
                 ))}
               </datalist>
               <p className="mt-2 text-xs text-muted-foreground">
-                {matched
-                  ? `Matched a place Raven already knows: ${matched.area}`
-                  : "Example: Munnar Bus Stand"}
+                {placeError ? (
+                  <span className="text-foreground">{placeError}</span>
+                ) : matched ? (
+                  `Matched a place Raven already knows: ${matched.area}`
+                ) : (
+                  "Example: Munnar Bus Stand"
+                )}
               </p>
+
+              {isUnmatched && (
+                <div className="mt-4">
+                  {!isAddingPlace ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingPlace(true)}
+                      className="text-sm text-foreground underline underline-offset-4"
+                    >
+                      This place isn't on Raven yet — add it?
+                    </button>
+                  ) : (
+                    <div className="rounded-sm border border-border p-5 shadow-quiet bg-secondary/10">
+                      <p className="font-display text-lg">Add {placeName.trim()}</p>
+                      <div className="mt-4">
+                        <label className="rule-label block">Area / City</label>
+                        <input
+                          value={newPlaceArea}
+                          onChange={(e) => setNewPlaceArea(e.target.value)}
+                          placeholder="e.g. Munnar"
+                          className="mt-2 w-full border-b border-input bg-transparent py-2 outline-none focus:border-ring text-sm"
+                        />
+                      </div>
+                      <div className="mt-6">
+                        <p className="rule-label mb-3">Pin the exact location</p>
+                        <PlacePickerMap onPick={(lat, lng) => setNewPlaceCoord({ lat, lng })} />
+                      </div>
+                      <div className="mt-6 flex items-center justify-between">
+                        <span className="text-xs text-caution">{newPlaceError}</span>
+                        <button
+                          type="button"
+                          onClick={handleSaveNewPlace}
+                          disabled={!newPlaceArea.trim() || !newPlaceCoord}
+                          className="rounded-sm bg-foreground px-5 py-2 text-sm text-background disabled:opacity-50 transition-opacity"
+                        >
+                          Save place
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -187,46 +290,57 @@ function ContributePage() {
             </div>
 
             <div>
-              <p className="rule-label">Add a photo — optional</p>
+              <p className="rule-label">Add photos — optional</p>
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="mt-3 flex h-40 w-full items-center justify-center rounded-sm border border-dashed border-border-strong bg-surface text-sm text-muted-foreground transition-colors hover:bg-accent"
+                className="mt-3 flex min-h-[10rem] w-full items-center justify-center rounded-sm border border-dashed border-border-strong bg-surface text-sm text-muted-foreground transition-colors hover:bg-accent"
               >
-                {photo ? (
-                  <img
-                    src={photo}
-                    alt="Your selected travel photo"
-                    className="h-full w-full rounded-sm object-cover"
-                  />
+                {photoPreviews.length > 0 ? (
+                  <div className="flex w-full flex-wrap gap-2 p-2">
+                    {photoPreviews.map((src, i) => (
+                      <img
+                        key={i}
+                        src={src}
+                        alt={`Selected photo ${i + 1}`}
+                        className="h-24 w-28 rounded-sm object-cover"
+                      />
+                    ))}
+                    <span className="flex h-24 w-28 items-center justify-center rounded-sm border border-dashed border-border text-xs text-muted-foreground">
+                      + Add more
+                    </span>
+                  </div>
                 ) : (
-                  "Add a photo of this place"
+                  "Add photos of this place"
                 )}
               </button>
               <input
                 ref={fileRef}
                 type="file"
                 accept="image/*"
+                multiple
                 className="hidden"
                 onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setPhoto(URL.createObjectURL(file));
-                  setPhotoName(file.name);
+                  const files = Array.from(e.target.files ?? []);
+                  if (!files.length) return;
+                  setPhotos((prev) => [...prev, ...files]);
+                  setPhotoPreviews((prev) => [
+                    ...prev,
+                    ...files.map((f) => URL.createObjectURL(f)),
+                  ]);
+                  // Reset so the same file can be re-added after clearing
+                  e.target.value = "";
                 }}
               />
-              {photoName && (
+              {photos.length > 0 && (
                 <p className="mt-2 flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
-                  <span className="truncate">{photoName}</span>
+                  <span>{photos.length} photo{photos.length > 1 ? "s" : ""} selected</span>
                   <button
                     type="button"
-                    onClick={() => {
-                      setPhoto(null);
-                      setPhotoName(null);
-                    }}
+                    onClick={() => { setPhotos([]); setPhotoPreviews([]); }}
                     className="shrink-0 underline underline-offset-4 hover:text-foreground"
                   >
-                    Remove
+                    Remove all
                   </button>
                 </p>
               )}
@@ -305,6 +419,9 @@ function ContributePage() {
               >
                 Cancel
               </button>
+              {submitError && (
+                <p className="text-sm text-foreground">{submitError}</p>
+              )}
             </div>
           </div>
         </form>

@@ -29,59 +29,29 @@ export type Experience = {
   text?: string;
   traveller: string;
   evidence?: "date" | "photo" | "date + photo";
+  images?: string[];
 };
+
+/** IDs of the four original Kerala places seeded from the Kochi → Munnar route.
+ *  Used to scope the homepage month-count to Kerala only. */
+export const KERALA_PLACE_IDS = new Set([
+  "kochi-boat-jetty",
+  "aluva-railway-station",
+  "vagamon-meadows",
+  "munnar-bus-stand",
+]);
 
 export type Place = {
   id: string;
   name: string;
   area: string;
-  kind: string;
   image: string;
-  lastReported: string;
+  kind?: string;
+  lastReported?: string;
   note?: string;
 };
 
-export const places: Place[] = [
-  {
-    id: "munnar-bus-stand",
-    name: "Munnar Bus Stand",
-    area: "Munnar",
-    kind: "Transport stop",
-    image: busStand,
-    lastReported: "2 days ago",
-  },
-  {
-    id: "aluva-railway-station",
-    name: "Aluva Railway Station",
-    area: "Aluva",
-    kind: "Railway station",
-    image: aluvaStation,
-    lastReported: "5 days ago",
-  },
-  {
-    id: "vagamon-meadows",
-    name: "Vagamon Meadows",
-    area: "Vagamon",
-    kind: "Viewpoint",
-    image: vagamon,
-    lastReported: "9 days ago",
-  },
-  {
-    id: "kochi-boat-jetty",
-    name: "Kochi Boat Jetty",
-    area: "Kochi",
-    kind: "Ferry terminal",
-    image: kochiWater,
-    lastReported: "3 days ago",
-  },
-];
 
-export const placeCoords: Record<string, { lat: number; lng: number }> = {
-  "kochi-boat-jetty": { lat: 9.9312, lng: 76.2673 },
-  "aluva-railway-station": { lat: 10.1065, lng: 76.3521 },
-  "vagamon-meadows": { lat: 9.6854, lng: 76.9059 },
-  "munnar-bus-stand": { lat: 10.0889, lng: 77.0595 },
-};
 
 export const journey = {
   from: "Kochi",
@@ -193,6 +163,4 @@ export const seedExperiences: Experience[] = [
   },
 ];
 
-export function placeById(id: string) {
-  return places.find((p) => p.id === id);
-}
+

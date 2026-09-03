@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from "react";
-import { seedExperiences, EXPERIENCE_TAGS, journey, type Experience } from "./raven-data";
+import { EXPERIENCE_TAGS, journey, type Experience } from "./raven-data";
+import { supabase } from "./supabase";
 
-let experiences: Experience[] = [...seedExperiences];
+let experiences: Experience[] = [];
 const sessionIds = new Set<string>();
 const listeners = new Set<() => void>();
 
@@ -9,11 +10,62 @@ function emit() {
   listeners.forEach((l) => l());
 }
 
-export function addExperience(input: Omit<Experience, "id">) {
-  const id = crypto.randomUUID();
-  experiences = [{ ...input, id }, ...experiences];
-  sessionIds.add(id);
-  emit();
+// Fetch all existing experiences on store initialization.
+supabase
+  .from("experiences")
+  .select("*")
+  .order("created_at", { ascending: false })
+  .then(({ data, error }) => {
+    if (error) {
+      console.error("Failed to load experiences from Supabase:", error);
+      return;
+    }
+    if (data) {
+      experiences = data.map((row: any) => ({
+        id: row.id,
+        placeId: row.place_id,
+        date: row.date,
+        iso: row.iso,
+        tags: row.tags,
+        text: row.text || undefined,
+        traveller: row.traveller,
+        images: row.images?.length ? row.images : undefined,
+      }));
+      emit();
+    }
+  });
+
+export async function addExperience(input: Omit<Experience, "id">) {
+  const { placeId, ...rest } = input;
+  
+  const { data, error } = await supabase
+    .from("experiences")
+    .insert({ ...rest, place_id: placeId })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Failed to add experience to Supabase:", error);
+    throw error;
+  }
+
+  if (data) {
+    const newExp: Experience = {
+      id: data.id,
+      placeId: data.place_id,
+      date: data.date,
+      iso: data.iso,
+      tags: data.tags,
+      text: data.text || undefined,
+      traveller: data.traveller,
+      images: data.images?.length ? data.images : undefined,
+    };
+    
+    // Add to the beginning of the list and update session set
+    experiences = [newExp, ...experiences];
+    sessionIds.add(data.id);
+    emit();
+  }
 }
 
 /** Returns the Set of IDs submitted in this browser session. Always fresh because
@@ -75,15 +127,19 @@ function relativeDate(iso: string): string {
   return `${days} days ago`;
 }
 
-/** Replaces the hardcoded journey.summary object with counts derived from the live store. */
-export function getJourneySummary(list: Experience[]) {
+/** Replaces the hardcoded journey.summary object with counts derived from the live store.
+ *  stopIds: the ordered stop_ids array from the current JourneyRoute. */
+export function getJourneySummary(list: Experience[], stopIds: string[]) {
   const cautionTags = new Set(
     EXPERIENCE_TAGS.filter((t) => t.tone === "caution").map((t) => t.label),
   );
+  const stopIdSet = new Set(stopIds);
+  const routeExperiences = list.filter((e) => stopIdSet.has(e.placeId));
+  const stopsWithReports = stopIds.filter((id) => routeExperiences.some((e) => e.placeId === id));
   return {
-    stops: journey.stops.length,
-    experiences: list.length,
-    cautions: list.filter((e) => e.tags.some((t) => cautionTags.has(t))).length,
+    stops: stopsWithReports.length,
+    experiences: routeExperiences.length,
+    cautions: routeExperiences.filter((e) => e.tags.some((t) => cautionTags.has(t))).length,
   };
 }
 

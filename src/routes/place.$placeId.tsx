@@ -1,12 +1,21 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import useEmblaCarousel from "embla-carousel-react";
 import { SiteHeader } from "@/components/raven/SiteHeader";
 import { TagMark } from "@/components/raven/TagMark";
-import { journey, placeById } from "@/lib/raven-data";
+import { journey } from "@/lib/raven-data";
+import { fetchPlaces, placeById } from "@/lib/places-store";
 import { synthesizeExperiences, useExperiences, getTagCounts, getStopStats, getSessionIds } from "@/lib/experience-store";
 
 export const Route = createFileRoute("/place/$placeId")({
-  loader: ({ params }) => {
+  validateSearch: (search: Record<string, unknown>): { from?: string; to?: string } => {
+    const res: { from?: string; to?: string } = {};
+    if (typeof search["from"] === "string") res.from = search["from"];
+    if (typeof search["to"] === "string") res.to = search["to"];
+    return res;
+  },
+  loader: async ({ params }) => {
+    await fetchPlaces();
     const place = placeById(params.placeId);
     if (!place) throw notFound();
     return { place };
@@ -32,11 +41,16 @@ export const Route = createFileRoute("/place/$placeId")({
 
 function PlacePage() {
   const { place } = Route.useLoaderData();
+  const search = Route.useSearch();
   const all = useExperiences();
   const sessionIds = getSessionIds();
   const experiences = all.filter((e) => e.placeId === place.id);
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const filteredExperiences = activeTag ? experiences.filter((e) => e.tags.includes(activeTag)) : experiences;
+  // Bug 3 fix: sort by travel date (iso) descending, not submission order
+  const filteredExperiences = [...(activeTag
+    ? experiences.filter((e) => e.tags.includes(activeTag))
+    : experiences
+  )].sort((a, b) => b.iso.localeCompare(a.iso));
   const ranked = getTagCounts(place.id, all);
   const stat = getStopStats(place.id, all, sessionIds);
 
@@ -44,29 +58,26 @@ function PlacePage() {
     <>
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
-        <Link to="/journey" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Kochi → Munnar
+        {/* Bug 4 fix: breadcrumb reflects the route the user navigated from, or falls back gracefully */}
+        <Link
+          to="/journey"
+          search={search.from && search.to ? { from: search.from, to: search.to } : {}}
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          {search.from && search.to
+            ? `← ${search.from} → ${search.to}`
+            : "← Journey"}
         </Link>
 
-        <div className="mt-6 grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
-          <div className="min-w-0">
-            <p className="rule-label">
-              {place.area} · {place.kind}
-            </p>
-            <h1 className="font-display mt-3 text-5xl leading-tight sm:text-6xl">{place.name}</h1>
-            <p className="mt-5 text-[0.95rem] text-muted-foreground">
-              <span className="text-foreground">{stat.count} recent experiences</span> ·
-              last reported {stat.lastReported}
-            </p>
-          </div>
-          <img
-            src={place.image}
-            alt={`${place.name}, ${place.area}`}
-            loading="lazy"
-            width={1408}
-            height={1008}
-            className="aspect-16/10 w-full rounded-sm border border-border object-cover shadow-quiet"
-          />
+        <div className="mt-6 min-w-0">
+          <p className="rule-label">
+            {place.area} · {place.kind}
+          </p>
+          <h1 className="font-display mt-3 text-5xl leading-tight sm:text-6xl">{place.name}</h1>
+          <p className="mt-5 text-[0.95rem] text-muted-foreground">
+            <span className="text-foreground">{stat.count} recent experiences</span> ·
+            last reported {stat.lastReported}
+          </p>
         </div>
 
         <section className="mt-16 grid gap-14 lg:grid-cols-[0.85fr_1.15fr]">
@@ -129,6 +140,9 @@ function PlacePage() {
             <ul className="mt-6 divide-y divide-border border-y border-border">
               {filteredExperiences.map((e) => (
                 <li key={e.id} className="py-6">
+                  {e.images && e.images.length > 0 && (
+                    <ExperienceImages images={e.images} />
+                  )}
                   {e.text && (
                     <p className="font-display text-xl leading-snug text-foreground">“{e.text}”</p>
                   )}
@@ -190,5 +204,91 @@ function PlacePage() {
         </section>
       </main>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ExperienceImages — thin embla slider for 1+ images attached to an experience
+// ---------------------------------------------------------------------------
+function ExperienceImages({ images }: { images: string[] }) {
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false });
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const scrollPrev = useCallback(() => {
+    if (!emblaApi) return;
+    emblaApi.scrollPrev();
+    setSelectedIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (!emblaApi) return;
+    emblaApi.scrollNext();
+    setSelectedIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
+
+  if (images.length === 1) {
+    return (
+      <div className="mb-4 overflow-hidden rounded-sm border border-border">
+        <img
+          src={images[0]}
+          alt="Travel photo"
+          className="aspect-video w-full object-cover"
+          loading="lazy"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4">
+      <div className="overflow-hidden rounded-sm border border-border" ref={emblaRef}>
+        <div className="flex">
+          {images.map((src, i) => (
+            <div key={i} className="relative min-w-0 flex-[0_0_100%]">
+              <img
+                src={src}
+                alt={`Travel photo ${i + 1}`}
+                className="aspect-video w-full object-cover"
+                loading="lazy"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Minimal navigation: prev/next arrows + dot indicators */}
+      <div className="mt-2 flex items-center justify-between">
+        <div className="flex gap-1.5">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-label={`Go to photo ${i + 1}`}
+              onClick={() => { emblaApi?.scrollTo(i); setSelectedIndex(i); }}
+              className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                i === selectedIndex ? "bg-foreground" : "bg-border-strong"
+              }`}
+            />
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={scrollPrev}
+            aria-label="Previous photo"
+            className="border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={scrollNext}
+            aria-label="Next photo"
+            className="border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

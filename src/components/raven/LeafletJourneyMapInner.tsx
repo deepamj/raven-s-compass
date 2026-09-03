@@ -13,45 +13,47 @@ import {
   Polyline,
   useMap,
 } from "react-leaflet";
-import { useNavigate } from "@tanstack/react-router";
 import "leaflet/dist/leaflet.css";
-import { journey, placeCoords, placeById } from "@/lib/raven-data";
+import { useNavigate } from "@tanstack/react-router";
+import { usePlaces } from "@/lib/places-store";
+import { type JourneyRoute } from "@/lib/routes-store";
 import { useExperiences, getStopStats, getSessionIds } from "@/lib/experience-store";
-
-// ---------------------------------------------------------------------------
-// Static data: computed once at module-load time (client only, safe here).
-// Filter out any stop missing a coord entry — future-proofs adding stops.
-// ---------------------------------------------------------------------------
-const stops = journey.stops.flatMap((s) => {
-  const coord = placeCoords[s.placeId];
-  const place = placeById(s.placeId);
-  if (!coord || !place) return [];
-  return [{ ...s, place, coord }];
-});
-
-const routePositions: [number, number][] = stops.map((s) => [s.coord.lat, s.coord.lng]);
+import { useMemo } from "react";
 
 // ---------------------------------------------------------------------------
 // FitBounds — child component that snaps the map viewport to the full route.
 // Must live inside MapContainer to access the Leaflet map context.
 // ---------------------------------------------------------------------------
-function FitBounds() {
+function FitBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
-    if (routePositions.length >= 2) {
-      map.fitBounds(routePositions, { padding: [44, 44] });
+    if (positions.length >= 2) {
+      map.fitBounds(positions, { padding: [44, 44] });
     }
-  }, [map]);
+  }, [map, positions]);
   return null;
 }
 
 // ---------------------------------------------------------------------------
 // Main map render — exported as default so React.lazy can import it.
 // ---------------------------------------------------------------------------
-export default function LeafletJourneyMapInner() {
+export default function LeafletJourneyMapInner({ route }: { route: JourneyRoute }) {
   const navigate = useNavigate();
   const experiences = useExperiences();
   const sessionIds = getSessionIds();
+  const allPlaces = usePlaces();
+
+  const stops = useMemo(() => {
+    return route.stop_ids.flatMap((placeId) => {
+      const place = allPlaces.find((p) => p.id === placeId);
+      if (!place) return [];
+      return [{ placeId, place, coord: { lat: place.lat, lng: place.lng }, label: place.area, note: "" }];
+    });
+  }, [allPlaces, route]);
+
+  const routePositions: [number, number][] = useMemo(() => {
+    return stops.map((s) => [s.coord.lat, s.coord.lng]);
+  }, [stops]);
 
   // The html element always carries the "dark" class in this app
   // (set in __root.tsx). Read it at render time so the tile URL is correct.
@@ -80,7 +82,7 @@ export default function LeafletJourneyMapInner() {
         // Keep Leaflet's zoom control; it uses our CSS overrides below.
         zoomControl
       >
-        <FitBounds />
+        <FitBounds positions={routePositions} />
 
         <TileLayer
           url={tileUrl}

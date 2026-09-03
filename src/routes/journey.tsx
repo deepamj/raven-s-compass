@@ -2,10 +2,21 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/raven/SiteHeader";
 import { LeafletJourneyMap } from "@/components/raven/LeafletJourneyMap";
-import { journey, placeById } from "@/lib/raven-data";
+import { fetchPlaces, placeById } from "@/lib/places-store";
+import { fetchRoutes, findRoute, type JourneyRoute } from "@/lib/routes-store";
 import { useExperiences, getStopStats, getSessionIds, getJourneySummary } from "@/lib/experience-store";
 
 export const Route = createFileRoute("/journey")({
+  validateSearch: (search: Record<string, unknown>): { from?: string; to?: string } => {
+    const res: { from?: string; to?: string } = {};
+    if (typeof search["from"] === "string") res.from = search["from"];
+    if (typeof search["to"] === "string") res.to = search["to"];
+    return res;
+  },
+  loader: async () => {
+    await fetchPlaces();
+    await fetchRoutes();
+  },
   head: () => ({
     meta: [
       { title: "Plan a route — What women who travelled it want you to know | Raven" },
@@ -25,15 +36,21 @@ export const Route = createFileRoute("/journey")({
   component: JourneyPage,
 });
 
+import { BuildRoute } from "@/components/raven/BuildRoute";
+
 const norm = (v: string) => v.trim().toLowerCase();
 
 function JourneyPage() {
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [query, setQuery] = useState<{ from: string; to: string } | null>(null);
+  const search = Route.useSearch();
+  const [from, setFrom] = useState(search.from ?? "");
+  const [to, setTo] = useState(search.to ?? "");
+  const [query, setQuery] = useState<{ from: string; to: string } | null>(
+    search.from && search.to ? { from: search.from, to: search.to } : null
+  );
+  const [isBuildingRoute, setIsBuildingRoute] = useState(false);
 
-  const supported =
-    query !== null && norm(query.from) === "kochi" && norm(query.to) === "munnar";
+  const route = query ? findRoute(query.from, query.to) : undefined;
+  const supported = route !== undefined;
 
   return (
     <>
@@ -88,36 +105,53 @@ function JourneyPage() {
             <p className="mt-4 text-[0.95rem] leading-relaxed text-muted-foreground">
               Be the first woman to share what you experienced.
             </p>
-            <Link
-              to="/contribute"
-              search={{}}
-              className="mt-8 inline-block rounded-sm border border-border-strong px-6 py-3 text-sm text-foreground transition-colors hover:bg-accent"
-            >
-              Contribute an experience
-            </Link>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Link
+                to="/contribute"
+                search={{}}
+                className="inline-block rounded-sm border border-border-strong px-6 py-3 text-sm text-foreground transition-colors hover:bg-accent"
+              >
+                Contribute an experience
+              </Link>
+              {!isBuildingRoute && (
+                <button
+                  type="button"
+                  onClick={() => setIsBuildingRoute(true)}
+                  className="text-sm text-foreground underline underline-offset-4"
+                >
+                  This route isn't on Raven yet — build it?
+                </button>
+              )}
+            </div>
+            
+            {isBuildingRoute && (
+              <BuildRoute initialFrom={query.from} initialTo={query.to} />
+            )}
           </section>
         )}
 
-        {supported && <JourneyContent />}
+        {supported && route && <JourneyContent route={route} />}
       </main>
     </>
   );
 }
 
-function JourneyContent() {
+function JourneyContent({ route }: { route: JourneyRoute }) {
   const all = useExperiences();
   const sessionIds = getSessionIds();
-  const summary = getJourneySummary(all);
+  const summary = getJourneySummary(all, route.stop_ids);
+  
+  const stops = route.stop_ids.map(id => ({ placeId: id, note: "" }));
 
   return (
     <>
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="min-w-0">
           <h1 className="font-display text-5xl leading-tight sm:text-6xl">
-            Kochi <span className="text-muted-foreground">→</span> Munnar
+            {route.from_text} <span className="text-muted-foreground">→</span> {route.to_text}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-          {journey.distance} · {journey.typical} · {summary.stops} stops with recent reports
+          {route.distance} · {route.typical} · {summary.stops} stops with recent reports
           </p>
         </div>
         <dl className="grid grid-cols-3 gap-6 text-sm sm:gap-10">
@@ -138,7 +172,7 @@ function JourneyContent() {
 
       <section className="mt-10">
         {/* LeafletJourneyMap replaces the SVG JourneyMap — JourneyMap.tsx is kept but unused */}
-        <LeafletJourneyMap />
+        <LeafletJourneyMap route={route} />
       </section>
 
       <section className="mt-16 grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
@@ -152,7 +186,7 @@ function JourneyContent() {
             one from last winter.
           </p>
           <ul className="mt-8 space-y-4">
-            {journey.cautionNotes.map((n) => (
+            {route.caution_notes.map((n) => (
               <li key={n.place} className="border-l-2 border-caution pl-4">
                 <p className="text-[0.95rem] leading-relaxed text-foreground">{n.text}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -166,7 +200,7 @@ function JourneyContent() {
         <div>
           <p className="rule-label">Stops along your route</p>
           <ul className="mt-4 divide-y divide-border border-y border-border">
-            {journey.stops.map((s) => {
+            {stops.map((s) => {
               const place = placeById(s.placeId)!;
               const stat = getStopStats(s.placeId, all, sessionIds);
               return (
@@ -174,16 +208,9 @@ function JourneyContent() {
                   <Link
                     to="/place/$placeId"
                     params={{ placeId: s.placeId }}
-                    className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 py-5 transition-colors hover:bg-secondary/60"
+                    search={{ from: route.from_text, to: route.to_text }}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-5 transition-colors hover:bg-secondary/60"
                   >
-                    <img
-                      src={place.image}
-                      alt={place.name}
-                      loading="lazy"
-                      width={1408}
-                      height={1008}
-                      className="h-16 w-20 shrink-0 rounded-sm border border-border object-cover"
-                    />
                     <div className="min-w-0">
                       <p className="truncate text-base text-foreground">{place.name}</p>
                       <p className="mt-1 text-sm text-muted-foreground">

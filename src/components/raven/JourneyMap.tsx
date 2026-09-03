@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { journey, placeById } from "@/lib/raven-data";
+import { journey } from "@/lib/raven-data";
+import { placeById } from "@/lib/places-store";
 import { useExperiences, getStopStats, getSessionIds } from "@/lib/experience-store";
 
 const coords: Record<string, { x: number; y: number }> = {

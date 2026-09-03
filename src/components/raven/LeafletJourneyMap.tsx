@@ -1,4 +1,5 @@
 import { useEffect, useState, Suspense, lazy } from "react";
+import type { JourneyRoute } from "@/lib/routes-store";
 
 // Lazy-import the actual map to keep Leaflet's window-dependent code
 // entirely out of the SSR bundle evaluation path.
@@ -14,7 +15,7 @@ function MapSkeleton() {
  * SSR-safe wrapper: renders a skeleton on the server and during the first
  * client paint, then swaps in the real Leaflet map once the component mounts.
  */
-export function LeafletJourneyMap() {
+export function LeafletJourneyMap({ route }: { route: JourneyRoute }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export function LeafletJourneyMap() {
 
   return (
     <Suspense fallback={<MapSkeleton />}>
-      <MapInner />
+      <MapInner route={route} />
     </Suspense>
   );
 }
